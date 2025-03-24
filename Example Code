@@ -1,0 +1,67 @@
+#include <SPI.h>
+#include <SD.h>
+#include <DHT.h>
+
+#define DHTPIN 2           // DHT11 data pin
+#define DHTTYPE DHT11      // Define sensor type
+#define LDR_PIN A0         // LDR analog pin
+#define SD_CS 10           // Chip Select pin for SD card
+
+DHT dht(DHTPIN, DHTTYPE);
+File dataFile;
+
+void setup() {
+    Serial.begin(9600);
+    dht.begin();
+    
+    // Initialize SD card
+    if (!SD.begin(SD_CS)) {
+        Serial.println("SD card failed or not present!");
+        return;
+    }
+    Serial.println("SD card initialized.");
+
+    // Create/open a log file
+    dataFile = SD.open("datalog.txt", FILE_WRITE);
+    if (dataFile) {
+        dataFile.println("Time(ms),Temperature(C),Humidity(%),Light(ADC)");
+        dataFile.close();
+    } else {
+        Serial.println("Failed to open file!");
+    }
+}
+
+void loop() {
+    float temperature = dht.readTemperature();
+    float humidity = dht.readHumidity();
+    int lightLevel = analogRead(LDR_PIN);
+    
+    // Check if sensor readings are valid
+    if (isnan(temperature) || isnan(humidity)) {
+        Serial.println("Failed to read from DHT sensor!");
+        return;
+    }
+    
+    // Open file and write data
+    dataFile = SD.open("datalog.txt", FILE_WRITE);
+    if (dataFile) {
+        dataFile.print(millis());  // Timestamp
+        dataFile.print(",");
+        dataFile.print(temperature);
+        dataFile.print(",");
+        dataFile.print(humidity);
+        dataFile.print(",");
+        dataFile.println(lightLevel);
+        dataFile.close();
+    } else {
+        Serial.println("Failed to write to file!");
+    }
+
+    // Print to Serial Monitor
+    Serial.print("Time: "); Serial.print(millis());
+    Serial.print(" | Temp: "); Serial.print(temperature); Serial.print(" C");
+    Serial.print(" | Hum: "); Serial.print(humidity); Serial.print(" %");
+    Serial.print(" | Light: "); Serial.println(lightLevel);
+
+    delay(5000);
+}
